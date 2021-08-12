@@ -3,9 +3,11 @@ import '../helper';
 import * as pmcrypto from '../../lib/pmcrypto';
 import { openpgp } from '../../lib/openpgp';
 
+globalThis.crypto = require('crypto').webcrypto;
+
 test('sha256 fingerprints - v4 key', async (t) => {
-    const { publicKeyArmored } = await pmcrypto.generateKey({ userIds: [{}], passphrase: 'test' });
-    const { fingerprints, sha256Fingerprints } = await pmcrypto.keyInfo(publicKeyArmored);
+    const { publicKey } = await pmcrypto.generateKey({ userIDs: [{}], passphrase: 'test' });
+    const { fingerprints, sha256Fingerprints } = await pmcrypto.keyInfo(publicKey);
     t.is(sha256Fingerprints.length, fingerprints.length);
     sha256Fingerprints.forEach((sha256Fingerprint, i) => {
         t.not(sha256Fingerprint, fingerprints[i]);
@@ -13,14 +15,14 @@ test('sha256 fingerprints - v4 key', async (t) => {
 });
 
 test.serial('sha256 fingerprints - v5 key', async (t) => {
-    openpgp.config.v5_keys = !openpgp.config.v5_keys;
-    const { publicKeyArmored } = await pmcrypto.generateKey({ userIds: [{}], passphrase: 'test' });
-    const { fingerprints, sha256Fingerprints } = await pmcrypto.keyInfo(publicKeyArmored);
+    openpgp.config.v5Keys = !openpgp.config.v5Keys;
+    const { publicKey } = await pmcrypto.generateKey({ userIDs: [{}], passphrase: 'test' });
+    const { fingerprints, sha256Fingerprints } = await pmcrypto.keyInfo(publicKey);
     t.is(sha256Fingerprints.length, fingerprints.length);
     sha256Fingerprints.forEach((sha256Fingerprint, i) => {
         t.is(sha256Fingerprint, fingerprints[i]);
     });
-    openpgp.config.v5_keys = !openpgp.config.v5_keys;
+    openpgp.config.v5Keys = !openpgp.config.v5Keys;
 });
 
 const publickey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
@@ -58,8 +60,8 @@ test('expiration test', async (t) => {
 
     const now = new Date(0);
     // primary key expires after one second
-    const { publicKeyArmored: expiringKey } = await openpgp.generateKey({
-        userIds: [{}],
+    const { publicKey: expiringKey } = await openpgp.generateKey({
+        userIDs: [{}],
         date: now,
         keyExpirationTime: 1
     });
@@ -123,19 +125,21 @@ test('valid key', async (t) => {
 });
 
 test('newly generated RSA key', async (t) => {
-    const { publicKeyArmored } = await pmcrypto.generateKey({ userIds: [{}], passphrase: 'test' });
-    const { validationError } = await pmcrypto.keyInfo(publicKeyArmored);
+    openpgp.config.preferredCompressionAlgorithm = openpgp.enums.compression.zlib;
+    const { publicKey } = await pmcrypto.generateKey({ userIDs: [{}], passphrase: 'test' });
+    const { validationError } = await pmcrypto.keyInfo(publicKey);
     t.is(validationError, null);
 });
 
 test('newly generated ECC key', async (t) => {
-    const { publicKeyArmored } = await pmcrypto.generateKey({ userIds: [{}], passphrase: 'test', curve: 'curve25519' });
-    const { validationError } = await pmcrypto.keyInfo(publicKeyArmored);
+    openpgp.config.preferredCompressionAlgorithm = openpgp.enums.compression.zlib;
+    const { publicKey } = await pmcrypto.generateKey({ userIDs: [{}], passphrase: 'test', curve: 'curve25519' });
+    const { validationError } = await pmcrypto.keyInfo(publicKey);
     t.is(validationError, null);
 });
 
 test('newly generated ECC key: invalid curve', async (t) => {
-    const { publicKeyArmored } = await pmcrypto.generateKey({ userIds: [{}], passphrase: 'test', curve: 'secp256k1' });
-    const { validationError } = await pmcrypto.keyInfo(publicKeyArmored);
+    const { publicKey } = await pmcrypto.generateKey({ userIDs: [{}], passphrase: 'test', curve: 'secp256k1' });
+    const { validationError } = await pmcrypto.keyInfo(publicKey);
     t.is(validationError, 'Key must use Curve25519, P-256, P-384 or P-521');
 });

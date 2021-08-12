@@ -14,6 +14,8 @@ import {
 } from '../../lib/pmcrypto';
 import { openpgp } from '../../lib/openpgp';
 
+globalThis.crypto = require('crypto').webcrypto;
+
 test('it can correctly encode base 64', async (t) => {
     t.is(encodeBase64('foo'), 'Zm9v');
 });
@@ -137,10 +139,9 @@ test('it can correctly perform an ECDHE roundtrip', async (t) => {
     const Q = binaryStringToArray(decodeBase64('QPOClKt3wRFh6I0D7ItvuRqQ9eIfJZfOcBK3qJ/J++oj'));
     const d = binaryStringToArray(decodeBase64('TG4WP1jLiWurBSTrpTCeYrdpJUqFTVFg1PzD2/m26Jg='));
     const Fingerprint = binaryStringToArray(decodeBase64('sbd0e0yF9dSX8+xH9VYDqGVK0Wk='));
-    const Curve = 'curve25519';
 
-    const { V, Z } = await genPublicEphemeralKey({ Curve, Q, Fingerprint });
-    const Zver = await genPrivateEphemeralKey({ Curve, V, d, Fingerprint });
+    const { V, Z } = await genPublicEphemeralKey({ Q, Fingerprint });
+    const Zver = await genPrivateEphemeralKey({ V, d, Fingerprint });
 
     t.deepEqual(Zver, Z);
 });
@@ -149,7 +150,7 @@ test('it can correctly perform an ECDHE roundtrip', async (t) => {
 test('it can check userId against a given email', (t) => {
     const info = {
         version: 4,
-        userIds: ['jb'],
+        userIDs: ['jb'],
         algorithmName: 'ecdsa',
         encrypt: {},
         revocationSignatures: [],
@@ -174,16 +175,21 @@ test('it can check userId against a given email', (t) => {
 test('it can correctly detect an expired key', async (t) => {
     const now = new Date();
     // key expires in one second
-    const { key: expiringKey } = await openpgp.generateKey({
-        userIds: [{ name: 'name', email: 'email@test.com' }],
+    const { privateKey: expiringKey } = await openpgp.generateKey({
+        userIDs: [{ name: 'name', email: 'email@test.com' }],
         date: now,
-        keyExpirationTime: 1
+        keyExpirationTime: 1,
+        format: 'object'
     });
     t.is(await isExpiredKey(expiringKey, now), false);
     t.is(await isExpiredKey(expiringKey, new Date(+now + 1000)), true);
     t.is(await isExpiredKey(expiringKey, new Date(+now - 1000)), true);
 
-    const { key } = await openpgp.generateKey({ userIds: [{ name: 'name', email: 'email@test.com' }], date: now });
+    const { privateKey: key } = await openpgp.generateKey({
+        userIDs: [{ name: 'name', email: 'email@test.com' }],
+        date: now,
+        format: 'object'
+    });
     t.is(await isExpiredKey(key), false);
     t.is(await isExpiredKey(key, new Date(+now - 1000)), true);
 });
@@ -192,13 +198,15 @@ test('it can correctly detect a revoked key', async (t) => {
     const past = new Date(0);
     const now = new Date();
 
-    const { key, revocationCertificate } = await openpgp.generateKey({
-        userIds: [{ name: 'name', email: 'email@test.com' }],
-        date: past
+    const { privateKey: key, revocationCertificate } = await openpgp.generateKey({
+        userIDs: [{ name: 'name', email: 'email@test.com' }],
+        date: past,
+        format: 'object'
     });
     const { publicKey: revokedKey } = await openpgp.revokeKey({
         key,
-        revocationCertificate
+        revocationCertificate,
+        format: 'object'
     });
     t.is(await isRevokedKey(revokedKey, past), true);
     t.is(await isRevokedKey(revokedKey, now), true);

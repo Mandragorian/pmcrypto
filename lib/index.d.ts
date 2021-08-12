@@ -51,7 +51,7 @@ export function generateKey(
 
 export interface ReformatKeyOptions {
     privateKey: OpenPGPKey;
-    userIds: UserID[];
+    userIDs: UserID[];
     passphrase: string;
     keyExpirationTime?: number;
     date?: Date;
@@ -137,7 +137,7 @@ export function encryptSessionKey(options: {
     passwords?: any[];
     wildcard?: boolean;
     date?: Date;
-    userIds?: any[];
+    userIDs?: any[];
 }): Promise<{ message: message.Message }>;
 
 export function decryptSessionKey(options: {
